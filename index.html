@@ -3,159 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบจัดการสต็อกสินค้าออเดอร์รายเดือน</title>
+    <title>ระบบสต็อกสินค้า - Made to Order</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
-        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; }
-        .table-container { overflow-x: auto; max-height: 70vh; }
-        thead th { position: sticky; top: 0; background: #1e293b; color: white; z-index: 10; }
+        body { font-family: 'Sarabun', sans-serif; background-color: #f8fafc; font-size: 11px; }
+        
+        .main-container { max-width: 100%; margin: 0 auto; padding: 10px; }
+        
+        .table-wrapper { 
+            overflow-x: auto; 
+            background: white; 
+            border-radius: 4px; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #cbd5e1;
+        }
+
+        table { border-collapse: collapse; width: 100%; min-width: 1200px; }
+        th, td { border: 1px solid #cbd5e1; padding: 2px 4px; text-align: center; }
+        
+        /* Header Colors based on the image */
+        .bg-yellow-header { background-color: #ffff00; color: #000; font-weight: bold; }
+        .bg-orange-header { background-color: #ff9900; color: #000; font-weight: bold; }
+        .bg-gray-sub { background-color: #e2e8f0; color: #334155; font-size: 10px; }
+        .bg-id-col { background-color: #f1f5f9; font-weight: bold; width: 50px; }
+        
+        .input-cell {
+            width: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 11px;
+            padding: 2px;
+            outline: none;
+        }
+        .input-cell:focus { background: #fff; box-shadow: inset 0 0 0 1px #3b82f6; }
+        .input-lot { text-align: left; font-size: 9px; font-style: italic; color: #64748b; }
+        
+        /* Calculated field styles */
+        .val-readonly { font-weight: bold; color: #2563eb; background-color: #f0f9ff; }
+        
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.8); display: flex; justify-content: center; align-items: center; z-index: 100;
+        }
+
+        .status-bar { display: flex; items-center: center; gap: 8px; font-size: 11px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="max-w-7xl mx-auto">
-        <!-- Header -->
-        <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-slate-200">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-2xl font-bold text-slate-800">รายงานStock Made to Order</h1>
-                    <p class="text-slate-500">จัดการ Texture Render และ Color Skim</p>
+<body>
+    <div id="loading" class="loading-overlay">
+        <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+    </div>
+
+    <div class="main-container">
+        <!-- Dashboard Header -->
+        <div class="bg-white p-3 rounded shadow-sm mb-3 border border-slate-200 flex items-center justify-between">
+            <div>
+                <h1 class="text-base font-bold text-slate-800">รายงาน Stock Made to Order</h1>
+                <div class="status-bar">
+                    <div id="statusDot" class="dot bg-green-500"></div>
+                    <span id="statusText" class="text-slate-500">ระบบคลาวด์พร้อมใช้งาน</span>
                 </div>
-                <div class="flex flex-wrap gap-2">
-                    <select id="monthSelect" class="border rounded-lg px-3 py-2 bg-white shadow-sm focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="มกราคม">มกราคม</option>
-                        <option value="กุมภาพันธ์">กุมภาพันธ์</option>
-                        <option value="มีนาคม">มีนาคม</option>
-                        <option value="เมษายน">เมษายน</option>
-                        <option value="พฤษภาคม">พฤษภาคม</option>
-                        <option value="มิถุนายน">มิถุนายน</option>
-                        <option value="กรกฎาคม">กรกฎาคม</option>
-                        <option value="สิงหาคม">สิงหาคม</option>
-                        <option value="กันยายน">กันยายน</option>
-                        <option value="ตุลาคม">ตุลาคม</option>
-                        <option value="พฤศจิกายน">พฤศจิกายน</option>
-                        <option value="ธันวาคม">ธันวาคม</option>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="font-bold text-slate-600">เดือน:</label>
+                    <select id="monthSelect" class="border rounded px-2 py-1 bg-white outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="Jan">มกราคม</option><option value="Feb">กุมภาพันธ์</option><option value="Mar">มีนาคม</option>
+                        <option value="Apr">เมษายน</option><option value="May">พฤษภาคม</option><option value="Jun">มิถุนายน</option>
+                        <option value="Jul">กรกฎาคม</option><option value="Aug">สิงหาคม</option><option value="Sep">กันยายน</option>
+                        <option value="Oct">ตุลาคม</option><option value="Nov">พฤศจิกายน</option><option value="Dec">ธันวาคม</option>
                     </select>
-                    <button onclick="copyToClipboard()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        Copy สำหรับ Excel
-                    </button>
                 </div>
+                <button onclick="copyToClipboard()" class="bg-slate-800 text-white px-3 py-1.5 rounded hover:bg-slate-700 transition flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    Copy for Excel
+                </button>
             </div>
         </div>
 
-        <!-- Inventory Table -->
-        <div class="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden">
-            <div class="table-container">
-                <table class="w-full text-left border-collapse" id="stockTable">
-                    <thead>
-                        <tr>
-                            <th class="p-3 text-sm font-semibold border-b border-slate-300">ประเภท/รหัสสี</th>
-                            <th class="p-3 text-sm font-semibold border-b border-slate-300 text-center">ยอดยกมา (ตัน)</th>
-                            <th class="p-3 text-sm font-semibold border-b border-slate-300 text-center">ยอดรับ (ตัน)</th>
-                            <th class="p-3 text-sm font-semibold border-b border-slate-300 text-center">ยอดจ่าย (ตัน)</th>
-                            <th class="p-3 text-sm font-semibold border-b border-slate-300 text-center">คงเหลือ (ตัน)</th>
-                            <th class="p-3 text-sm font-semibold border-b border-slate-300">เลข Lot</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody">
-                        <!-- Content will be generated by JS -->
-                    </tbody>
-                </table>
-            </div>
+        <div class="table-wrapper">
+            <table id="mainTable">
+                <thead>
+                    <!-- Top Category Headers -->
+                    <tr>
+                        <th rowspan="4" class="bg-slate-200 w-12 text-xs">รหัส<br>สินค้า</th>
+                        <th colspan="10" class="bg-yellow-header">Texture Render (1mm & 2mm)</th>
+                        <th colspan="6" class="bg-orange-header">Color Skim</th>
+                    </tr>
+                    <tr>
+                        <th colspan="2" class="bg-gray-sub">ยอดยกมา (ตัน)</th>
+                        <th colspan="2" class="bg-gray-sub">ยอดรับ (ตัน)</th>
+                        <th colspan="2" class="bg-gray-sub">ยอดจ่าย (ตัน)</th>
+                        <th colspan="2" class="bg-gray-sub">คงเหลือ (ตัน)</th>
+                        <th colspan="2" rowspan="2" class="bg-gray-sub">เลข Lot</th>
+                        <th rowspan="3" class="bg-orange-header w-12 text-xs">รหัส<br>สินค้า</th>
+                        <th class="bg-gray-sub">ยอดยกมา</th>
+                        <th class="bg-gray-sub">ยอดรับ</th>
+                        <th class="bg-gray-sub">ยอดจ่าย</th>
+                        <th class="bg-gray-sub">คงเหลือ</th>
+                        <th rowspan="2" class="bg-gray-sub">เลข Lot</th>
+                    </tr>
+                    <tr>
+                        <th class="bg-white text-[9px] w-14">Scracht 1mm</th>
+                        <th class="bg-white text-[9px] w-14">Worm 2mm</th>
+                        <th class="bg-white text-[9px] w-14">Scracht 1mm</th>
+                        <th class="bg-white text-[9px] w-14">Worm 2mm</th>
+                        <th class="bg-white text-[9px] w-14">Scracht 1mm</th>
+                        <th class="bg-white text-[9px] w-14">Worm 2mm</th>
+                        <th class="bg-blue-50 text-[9px] w-14">Scracht 1mm</th>
+                        <th class="bg-blue-50 text-[9px] w-14">Worm 2mm</th>
+                        <th class="bg-white text-[9px] w-12">ตัน</th>
+                        <th class="bg-white text-[9px] w-12">ตัน</th>
+                        <th class="bg-white text-[9px] w-12">ตัน</th>
+                        <th class="bg-blue-50 text-[9px] w-12">ตัน</th>
+                    </tr>
+                    <tr class="bg-slate-50">
+                        <!-- Empty cells for alignment in sub-header -->
+                        <th class="p-0"></th><th class="p-0"></th><th class="p-0"></th><th class="p-0"></th><th class="p-0"></th><th class="p-0"></th><th class="p-0"></th><th class="p-0"></th>
+                        <th class="text-[8px]">Scracht</th><th class="text-[8px]">Worm</th>
+                        <th class="p-0"></th><th class="p-0"></th><th class="p-0"></th><th class="p-0"></th>
+                        <th class="text-[8px]">Lot No.</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- JS generated rows -->
+                </tbody>
+            </table>
         </div>
 
-        <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-xl opacity-0 transition-opacity duration-300 pointer-events-none">
-            คัดลอกข้อมูลแล้ว! สามารถวางใน Excel ได้ทันที
+        <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-4 py-2 rounded shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none text-xs">
+            คัดลอกข้อมูลแล้ว!
         </div>
     </div>
 
-    <script>
-        const products = [
-            { category: "Texture Render - Worm (2mm.)", items: ["YE01 W.", "YE02 W.", "YE03 W.", "YE04 W.", "OR01 W.", "OR02 W.", "OR03 W.", "OR04 W.", "BL01 W.", "BL02 W.", "GR01 W.", "GR02 W.", "GR03 W.", "RE01 W.", "RE02 W.", "WH01 W.", "WH02 W.", "GB01 W.", "GB02 W.", "GY01 W.", "GY02 W.", "GY03 W.", "GY04 W.", "BR01 W.", "BR02 W.", "BR03 W.", "HB03 W."] },
-            { category: "Texture Render - Scrat (1mm.)", items: ["YE01 Sc.", "YE02 Sc.", "YE03 Sc.", "YE04 Sc.", "OR01 Sc.", "OR02 Sc.", "OR03 Sc.", "OR04 Sc.", "BL01 Sc.", "BL02 Sc.", "GR01 Sc.", "GR02 Sc.", "GR03 Sc.", "RE01 Sc.", "RE02 Sc.", "WH01 Sc.", "WH02 Sc.", "GB01 Sc.", "GB02 Sc.", "GY01 Sc.", "GY02 Sc.", "GY03 Sc.", "GY04 Sc.", "BR01 Sc.", "BR02 Sc.", "BR03 Sc.", "HB03 Sc."] },
-            { category: "Color Skim", items: ["YE01", "YE02", "YE03", "YE04", "OR01", "OR02", "OR03", "OR04", "GY01", "GY02", "GY03", "GY04", "WH01", "WH02", "BL01", "BL02", "BL03", "GR01", "GR02", "GR03", "RE01", "RE02", "LB01", "LB02", "GB01", "GB02", "GB03", "BR01", "BR02", "BR03", "HB03"] }
-        ];
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        function initTable() {
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Consistent codes for matching left and right sides
+        const colorCodes = ["YE01", "YE02", "YE03", "YE04", "OR01", "OR02", "OR03", "OR04", "BL01", "BL02", "GR01", "GR02", "GR03", "RE01", "RE02", "WH01", "WH02", "GB01", "GB02", "GY01", "GY02", "GY03", "GY04", "BR01", "BR02", "BR03", "HB03", "LB01", "LB02", "GB03"];
+
+        let currentUser = null;
+        let unsubscribe = null;
+
+        const initTable = () => {
             const tbody = document.getElementById('tableBody');
             let html = '';
-
-            products.forEach(group => {
-                // Category Row
-                html += `<tr class="bg-slate-100 font-bold"><td colspan="6" class="p-3 text-slate-700">${group.category}</td></tr>`;
-                
-                group.items.forEach(code => {
-                    const rowId = code.replace(/[^a-zA-Z0-9]/g, '');
-                    html += `
-                        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-                            <td class="p-3 font-medium text-slate-700">${code}</td>
-                            <td class="p-1"><input type="number" step="0.01" class="w-full p-2 text-center bg-transparent focus:bg-white outline-none focus:ring-1 focus:ring-blue-400 rounded" placeholder="0" oninput="calculateRow('${rowId}')" id="start-${rowId}"></td>
-                            <td class="p-1"><input type="number" step="0.01" class="w-full p-2 text-center bg-transparent focus:bg-white outline-none focus:ring-1 focus:ring-green-400 rounded" placeholder="0" oninput="calculateRow('${rowId}')" id="in-${rowId}"></td>
-                            <td class="p-1"><input type="number" step="0.01" class="w-full p-2 text-center bg-transparent focus:bg-white outline-none focus:ring-1 focus:ring-red-400 rounded" placeholder="0" oninput="calculateRow('${rowId}')" id="out-${rowId}"></td>
-                            <td class="p-1"><input type="number" readonly class="w-full p-2 text-center font-bold text-blue-600 bg-slate-50" value="0.00" id="bal-${rowId}"></td>
-                            <td class="p-1"><input type="text" class="w-full p-2 text-sm outline-none focus:ring-1 focus:ring-blue-400 rounded" placeholder="ระบุเลข Lot" id="lot-${rowId}"></td>
-                        </tr>
-                    `;
-                });
+            
+            colorCodes.forEach(code => {
+                html += `
+                    <tr>
+                        <td class="bg-id-col">${code}</td>
+                        <!-- Texture Render Scratch 1mm -->
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="tr" data-type="sc" data-field="start"></td>
+                        <!-- Texture Render Worm 2mm -->
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="tr" data-type="wm" data-field="start"></td>
+                        
+                        <!-- TR Receive -->
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="tr" data-type="sc" data-field="receive"></td>
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="tr" data-type="wm" data-field="receive"></td>
+                        
+                        <!-- TR Pay -->
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="tr" data-type="sc" data-field="pay"></td>
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="tr" data-type="wm" data-field="pay"></td>
+                        
+                        <!-- TR Balance -->
+                        <td class="bg-blue-50"><input type="text" readonly class="input-cell val-readonly" id="bal-tr-sc-${code}" value="0.00"></td>
+                        <td class="bg-blue-50"><input type="text" readonly class="input-cell val-readonly" id="bal-tr-wm-${code}" value="0.00"></td>
+                        
+                        <!-- TR Lot -->
+                        <td><input type="text" class="input-cell input-lot" data-code="${code}" data-group="tr" data-type="sc" data-field="lot" placeholder="Lot..."></td>
+                        <td><input type="text" class="input-cell input-lot" data-code="${code}" data-group="tr" data-type="wm" data-field="lot" placeholder="Lot..."></td>
+                        
+                        <!-- Color Skim side -->
+                        <td class="bg-orange-50 font-bold">${code}</td>
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="cs" data-field="start"></td>
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="cs" data-field="receive"></td>
+                        <td><input type="number" step="0.01" class="input-cell" data-code="${code}" data-group="cs" data-field="pay"></td>
+                        <td class="bg-blue-50"><input type="text" readonly class="input-cell val-readonly" id="bal-cs-${code}" value="0.00"></td>
+                        <!-- CS Lot -->
+                        <td><input type="text" class="input-cell input-lot" data-code="${code}" data-group="cs" data-field="lot" placeholder="Lot..."></td>
+                    </tr>
+                `;
             });
             tbody.innerHTML = html;
-        }
 
-        function calculateRow(id) {
-            const start = parseFloat(document.getElementById(`start-${id}`).value) || 0;
-            const receive = parseFloat(document.getElementById(`in-${id}`).value) || 0;
-            const pay = parseFloat(document.getElementById(`out-${id}`).value) || 0;
-            const balance = (start + receive) - pay;
-            
-            const balInput = document.getElementById(`bal-${id}`);
-            balInput.value = balance.toFixed(2);
-            
-            if (balance < 0) {
-                balInput.classList.add('text-red-600');
-                balInput.classList.remove('text-blue-600');
-            } else {
-                balInput.classList.remove('text-red-600');
-                balInput.classList.add('text-blue-600');
-            }
-        }
-
-        function copyToClipboard() {
-            const month = document.getElementById('monthSelect').value;
-            let csvContent = `รายงานสต็อกสินค้าประจำเดือน: ${month}\n`;
-            csvContent += "ประเภท/รหัสสี\tยอดยกมา\tยอดรับ\tยอดจ่าย\tคงเหลือ\tเลข Lot\n";
-            
-            const rows = document.querySelectorAll('#tableBody tr');
-            rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length === 1) {
-                    csvContent += `${cells[0].innerText}\t\t\t\t\t\n`;
-                } else {
-                    const code = cells[0].innerText;
-                    const start = row.querySelector('input[id^="start-"]').value || '0';
-                    const receive = row.querySelector('input[id^="in-"]').value || '0';
-                    const pay = row.querySelector('input[id^="out-"]').value || '0';
-                    const balance = row.querySelector('input[id^="bal-"]').value || '0';
-                    const lot = row.querySelector('input[id^="lot-"]').value || '-';
-                    csvContent += `${code}\t${start}\t${receive}\t${pay}\t${balance}\t${lot}\n`;
+            document.querySelectorAll('.input-cell').forEach(el => {
+                el.addEventListener('change', (e) => saveData(e.target));
+                if(el.type === 'number') {
+                    el.addEventListener('input', (e) => calculateRow(e.target.dataset.code));
                 }
             });
+        };
 
+        const calculateRow = (code) => {
+            // Calc TR Scrat 1mm
+            const s_start = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="sc"][data-field="start"]`).value) || 0;
+            const s_rec = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="sc"][data-field="receive"]`).value) || 0;
+            const s_pay = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="sc"][data-field="pay"]`).value) || 0;
+            document.getElementById(`bal-tr-sc-${code}`).value = (s_start + s_rec - s_pay).toFixed(2);
+
+            // Calc TR Worm 2mm
+            const w_start = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="wm"][data-field="start"]`).value) || 0;
+            const w_rec = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="wm"][data-field="receive"]`).value) || 0;
+            const w_pay = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="wm"][data-field="pay"]`).value) || 0;
+            document.getElementById(`bal-tr-wm-${code}`).value = (w_start + w_rec - w_pay).toFixed(2);
+
+            // Calc Color Skim
+            const c_start = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="cs"][data-field="start"]`).value) || 0;
+            const c_rec = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="cs"][data-field="receive"]`).value) || 0;
+            const c_pay = parseFloat(document.querySelector(`input[data-code="${code}"][data-group="cs"][data-field="pay"]`).value) || 0;
+            document.getElementById(`bal-cs-${code}`).value = (c_start + c_rec - c_pay).toFixed(2);
+        };
+
+        const setupAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        const loadData = (month) => {
+            if (!currentUser) return;
+            document.getElementById('loading').style.display = 'flex';
+            if (unsubscribe) unsubscribe();
+
+            // Reset UI
+            document.querySelectorAll('.input-cell:not([readonly])').forEach(i => i.value = "");
+            document.querySelectorAll('.input-cell[readonly]').forEach(i => i.value = "0.00");
+
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inventory_layout_v3', month);
+            unsubscribe = onSnapshot(docRef, (snap) => {
+                if (snap.exists()) {
+                    const data = snap.data();
+                    colorCodes.forEach(code => {
+                        const item = data[code];
+                        if (item) {
+                            if (item.tr) {
+                                ['sc', 'wm'].forEach(type => {
+                                    if (item.tr[type]) {
+                                        ['start', 'receive', 'pay', 'lot'].forEach(f => {
+                                            const input = document.querySelector(`input[data-code="${code}"][data-group="tr"][data-type="${type}"][data-field="${f}"]`);
+                                            if (input) input.value = item.tr[type][f] || "";
+                                        });
+                                    }
+                                });
+                            }
+                            if (item.cs) {
+                                ['start', 'receive', 'pay', 'lot'].forEach(f => {
+                                    const input = document.querySelector(`input[data-code="${code}"][data-group="cs"][data-field="${f}"]`);
+                                    if (input) input.value = item.cs[f] || "";
+                                });
+                            }
+                        }
+                        calculateRow(code);
+                    });
+                }
+                document.getElementById('loading').style.display = 'none';
+            });
+        };
+
+        const saveData = async (target) => {
+            if (!currentUser) return;
+            const month = document.getElementById('monthSelect').value;
+            const { code, group, field, type } = target.dataset;
+            const value = target.value;
+
+            const dot = document.getElementById('statusDot');
+            dot.className = "dot bg-yellow-500 animate-pulse";
+
+            const update = {};
+            if (group === 'tr') {
+                update[`${code}.tr.${type}.${field}`] = value;
+            } else {
+                update[`${code}.cs.${field}`] = value;
+            }
+
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'inventory_layout_v3', month);
+                await setDoc(docRef, update, { merge: true });
+                dot.className = "dot bg-green-500";
+            } catch (e) {
+                console.error(e);
+                dot.className = "dot bg-red-500";
+            }
+        };
+
+        window.copyToClipboard = () => {
+            const table = document.getElementById("mainTable");
+            let text = "";
+            for (let i = 0; i < table.rows.length; i++) {
+                for (let j = 0; j < table.rows[i].cells.length; j++) {
+                    const cell = table.rows[i].cells[j];
+                    const input = cell.querySelector('input');
+                    text += (input ? input.value : cell.innerText.replace(/\n/g, ' ')) + "\t";
+                }
+                text += "\n";
+            }
             const el = document.createElement('textarea');
-            el.value = csvContent;
+            el.value = text;
             document.body.appendChild(el);
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-
             const toast = document.getElementById('toast');
             toast.style.opacity = '1';
-            setTimeout(() => toast.style.opacity = '0', 3000);
-        }
+            setTimeout(() => toast.style.opacity = '0', 2000);
+        };
 
-        window.onload = initTable;
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) loadData(document.getElementById('monthSelect').value);
+        });
+
+        document.getElementById('monthSelect').addEventListener('change', (e) => loadData(e.target.value));
+
+        initTable();
+        setupAuth();
     </script>
 </body>
 </html>
